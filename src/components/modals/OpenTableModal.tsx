@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
 import { AppModal, PrimaryButton } from '@/components/ui';
-import { colors, radius, sp } from '@/theme';
+import { colors, focusRing, radius, sp } from '@/theme';
 import { money } from '@/utils/format';
 import { useStore } from '@/store/useStore';
 
@@ -72,16 +73,18 @@ export function OpenTableModal({
   return (
     <AppModal visible={visible} title={`Открыть ${tableName.toLowerCase()}`} onClose={onClose}>
       <Text style={styles.section}>Выберите тариф</Text>
-      <View style={{ gap: sp(2.5) }}>
+      <View style={styles.tariffGrid}>
         {tariffs.map((t) => {
           const active = t.id === tariffId;
           return (
             <Pressable
               key={t.id}
               onPress={() => setTariffId(t.id)}
-              style={({ pressed }) => [
+              style={({ focused, pressed }) => [
                 styles.tariff,
+                tariffs.length > 1 && styles.tariffHalf,
                 active && styles.tariffActive,
+                focused && focusRing,
                 pressed && { opacity: 0.7 },
               ]}
             >
@@ -104,7 +107,11 @@ export function OpenTableModal({
       <View style={styles.timeRow}>
         <Pressable
           onPress={() => setFromTotal(minutes - STEP_MIN)}
-          style={({ pressed }) => [styles.stepBox, pressed && { opacity: 0.6 }]}
+          style={({ focused, pressed }) => [
+            styles.stepBox,
+            focused && focusRing,
+            pressed && { opacity: 0.6 },
+          ]}
         >
           <Text style={styles.stepText}>− {STEP_MIN} мин</Text>
         </Pressable>
@@ -136,7 +143,11 @@ export function OpenTableModal({
 
         <Pressable
           onPress={() => setFromTotal(minutes + STEP_MIN)}
-          style={({ pressed }) => [styles.stepBox, pressed && { opacity: 0.6 }]}
+          style={({ focused, pressed }) => [
+            styles.stepBox,
+            focused && focusRing,
+            pressed && { opacity: 0.6 },
+          ]}
         >
           <Text style={styles.stepText}>+ {STEP_MIN} мин</Text>
         </Pressable>
@@ -149,9 +160,10 @@ export function OpenTableModal({
             <Pressable
               key={p.label}
               onPress={() => setFromTotal(p.minutes)}
-              style={({ pressed }) => [
+              style={({ focused, pressed }) => [
                 styles.preset,
                 active && styles.presetActive,
+                focused && focusRing,
                 pressed && { opacity: 0.6 },
               ]}
             >
@@ -172,6 +184,7 @@ const styles = StyleSheet.create({
   section: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: sp(3) },
 
   tariff: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -182,6 +195,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.white,
   },
+  tariffGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: sp(2.5) },
+  tariffHalf: { width: '48.5%', flexGrow: 1 },
   tariffActive: { borderColor: colors.green },
   tariffName: { fontSize: 17, fontWeight: '700', color: colors.text },
   tariffPrice: { fontSize: 14, color: colors.textMuted, marginTop: 3 },

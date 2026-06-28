@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
 import { AppModal, PrimaryButton } from '@/components/ui';
-import { colors, radius, sp } from '@/theme';
+import { colors, focusRing, radius, sp } from '@/theme';
 
 const QUICK = [15, 30, 60];
 
@@ -30,7 +31,11 @@ export function AddTimeModal({
           <Pressable
             key={m}
             onPress={() => apply(m)}
-            style={({ pressed }) => [styles.chip, pressed && { opacity: 0.6 }]}
+            style={({ focused, pressed }) => [
+              styles.chip,
+              focused && focusRing,
+              pressed && { opacity: 0.6 },
+            ]}
           >
             <Text style={styles.chipText}>+{m} мин</Text>
           </Pressable>

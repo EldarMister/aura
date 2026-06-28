@@ -67,11 +67,14 @@ interface StoreState {
 
   /* сессии столов */
   openGame: (tableId: string, tariffId: string, durationSeconds: number) => void;
+  updateSession: (tableId: string, tariffId: string, durationSeconds: number) => void;
+  togglePause: (tableId: string) => void;
   changeTariff: (tableId: string, tariffId: string) => void;
   addTime: (tableId: string, minutes: number) => void;
   resetTime: (tableId: string) => void;
   setDrinkQty: (tableId: string, drink: Drink, quantity: number) => void;
-  closeTable: (tableId: string) => void;
+  closeTable: (tableId: string) => GameRecord | null;
+  cancelTable: (tableId: string) => GameRecord | null;
 
   /* справочники (настройки) */
   upsertDrink: (drink: { id?: string; name: string; price: number }) => void;
@@ -87,6 +90,40 @@ const mapTable = (
 ): Pick<StoreState, 'tables'> => ({
   tables: state.tables.map((t) => (t.id === tableId ? fn(t) : t)),
 });
+
+const makeRecord = (
+  state: StoreState,
+  table: Table,
+  status: GameRecord['status'],
+): GameRecord | null => {
+  if (!table.session) return null;
+  const now = Date.now();
+  const s = table.session;
+  const tableAmount = status === 'completed' ? timeCost(s) : 0;
+  const drinksAmount = status === 'completed' ? drinksTotal(s) : 0;
+  const number = state.gameCounter + 1;
+  return {
+    id: uid(),
+    number,
+    tableId: table.id,
+    tableName: table.name,
+    tariffId: s.tariffId,
+    tariffName: s.tariffName,
+    pricePerHour: s.pricePerHour,
+    startedAt: s.startedAt,
+    endedAt: now,
+    durationMinutes: Math.round(s.durationSeconds / 60),
+    drinks: s.drinks.map((d) => ({
+      ...d,
+      total: status === 'completed' ? d.price * d.quantity : 0,
+    })),
+    drinksCount: status === 'completed' ? s.drinks.reduce((n, d) => n + d.quantity, 0) : 0,
+    tableAmount,
+    drinksAmount,
+    totalAmount: tableAmount + drinksAmount,
+    status,
+  };
+};
 
 export const useStore = create<StoreState>()(
   persist(
@@ -131,6 +168,8 @@ export const useStore = create<StoreState>()(
               tariffName: tariff.name,
               pricePerHour: tariff.pricePerHour,
               startedAt: Date.now(),
+              pausedAt: null,
+              pausedMs: 0,
               durationSeconds: Math.max(0, Math.round(durationSeconds)),
               drinks: [],
               status: 'active',
@@ -156,6 +195,59 @@ export const useStore = create<StoreState>()(
           );
         }),
 
+      updateSession: (tableId, tariffId, durationSeconds) =>
+        set((state) => {
+          const now = Date.now();
+          const tariff = state.tariffs.find((t) => t.id === tariffId);
+          if (!tariff) return {};
+          return mapTable(state, tableId, (t) =>
+            t.session
+              ? {
+                  ...t,
+                  session: {
+                    ...t.session,
+                    tariffId: tariff.id,
+                    tariffName: tariff.name,
+                    pricePerHour: tariff.pricePerHour,
+                    startedAt: now,
+                    pausedAt: t.session.status === 'paused' ? now : null,
+                    pausedMs: 0,
+                    durationSeconds: Math.max(0, Math.round(durationSeconds)),
+                  },
+                }
+              : t,
+          );
+        }),
+
+      togglePause: (tableId) =>
+        set((state) => {
+          const now = Date.now();
+          return mapTable(state, tableId, (t) => {
+            if (!t.session) return t;
+            if (t.session.status === 'paused') {
+              const pausedAt = t.session.pausedAt ?? now;
+              return {
+                ...t,
+                session: {
+                  ...t.session,
+                  status: 'active',
+                  pausedAt: null,
+                  pausedMs: (t.session.pausedMs ?? 0) + Math.max(0, now - pausedAt),
+                },
+              };
+            }
+            return {
+              ...t,
+              session: {
+                ...t.session,
+                status: 'paused',
+                pausedAt: now,
+                pausedMs: t.session.pausedMs ?? 0,
+              },
+            };
+          });
+        }),
+
       // Добавляет минуты к забронированному времени (продлевает обратный отсчёт).
       addTime: (tableId, minutes) =>
         set((state) =>
@@ -176,7 +268,17 @@ export const useStore = create<StoreState>()(
       resetTime: (tableId) =>
         set((state) =>
           mapTable(state, tableId, (t) =>
-            t.session ? { ...t, session: { ...t.session, startedAt: Date.now() } } : t,
+            t.session
+              ? {
+                  ...t,
+                  session: {
+                    ...t.session,
+                    startedAt: Date.now(),
+                    pausedAt: t.session.status === 'paused' ? Date.now() : null,
+                    pausedMs: 0,
+                  },
+                }
+              : t,
           ),
         ),
 
@@ -202,38 +304,33 @@ export const useStore = create<StoreState>()(
         ),
 
       closeTable: (tableId) =>
-        set((state) => {
+        {
+          const state = get();
           const table = state.tables.find((t) => t.id === tableId);
-          if (!table || !table.session) return {};
-          const now = Date.now();
-          const s = table.session;
-          const tableAmount = timeCost(s);
-          const drinksAmount = drinksTotal(s);
-          const number = state.gameCounter + 1;
-          const record: GameRecord = {
-            id: uid(),
-            number,
-            tableId: table.id,
-            tableName: table.name,
-            tariffId: s.tariffId,
-            tariffName: s.tariffName,
-            pricePerHour: s.pricePerHour,
-            startedAt: s.startedAt,
-            endedAt: now,
-            durationMinutes: Math.round(s.durationSeconds / 60),
-            drinks: s.drinks.map((d) => ({ ...d, total: d.price * d.quantity })),
-            drinksCount: s.drinks.reduce((n, d) => n + d.quantity, 0),
-            tableAmount,
-            drinksAmount,
-            totalAmount: tableAmount + drinksAmount,
-            status: 'completed',
-          };
-          return {
+          if (!table || !table.session) return null;
+          const record = makeRecord(state, table, 'completed');
+          if (!record) return null;
+          set({
             history: [record, ...state.history],
-            gameCounter: number,
+            gameCounter: record.number,
             ...mapTable(state, tableId, (t) => ({ ...t, status: 'free', session: null })),
-          };
-        }),
+          });
+          return record;
+        },
+
+      cancelTable: (tableId) => {
+        const state = get();
+        const table = state.tables.find((t) => t.id === tableId);
+        if (!table || !table.session) return null;
+        const record = makeRecord(state, table, 'canceled');
+        if (!record) return null;
+        set({
+          history: [record, ...state.history],
+          gameCounter: record.number,
+          ...mapTable(state, tableId, (t) => ({ ...t, status: 'free', session: null })),
+        });
+        return record;
+      },
 
       upsertDrink: ({ id, name, price }) =>
         set((state) => {

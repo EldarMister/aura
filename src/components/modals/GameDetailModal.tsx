@@ -26,7 +26,15 @@ export function GameDetailModal({
           <Text style={styles.section}>Информация</Text>
           <View style={styles.table}>
             <View style={styles.tRow}>
-              <Cell label="Статус" value={<Badge text="Завершена" />} />
+              <Cell
+                label="Статус"
+                value={
+                  <Badge
+                    text={game.status === 'canceled' ? 'Отменена' : 'Завершена'}
+                    canceled={game.status === 'canceled'}
+                  />
+                }
+              />
               <Cell label="Стол" value={<Val text={game.tableName} />} borderLeft />
             </View>
             <View style={[styles.tRow, styles.tRowBorder]}>
@@ -55,8 +63,12 @@ export function GameDetailModal({
                     {d.quantity}× {d.name}
                   </Text>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.drinkPrice}>{money(d.total ?? d.price * d.quantity)}</Text>
-                    <Text style={styles.sold}>Продано</Text>
+                    <Text style={styles.drinkPrice}>
+                      {game.status === 'canceled' ? money(0) : money(d.total ?? d.price * d.quantity)}
+                    </Text>
+                    <Text style={styles.sold}>
+                      {game.status === 'canceled' ? 'Отменено' : 'Продано'}
+                    </Text>
                   </View>
                 </View>
               ))
@@ -97,9 +109,9 @@ const Val = ({ text }: { text: string }) => (
   </Text>
 );
 
-const Badge = ({ text }: { text: string }) => (
-  <View style={styles.badge}>
-    <Text style={styles.badgeText}>{text}</Text>
+const Badge = ({ text, canceled }: { text: string; canceled?: boolean }) => (
+  <View style={[styles.badge, canceled && styles.badgeCanceled]}>
+    <Text style={[styles.badgeText, canceled && styles.badgeTextCanceled]}>{text}</Text>
   </View>
 );
 
@@ -136,6 +148,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   badgeText: { fontSize: 12, fontWeight: '600', color: colors.green },
+  badgeCanceled: { backgroundColor: colors.bg },
+  badgeTextCanceled: { color: colors.textMuted },
 
   drinksHead: {
     flexDirection: 'row',

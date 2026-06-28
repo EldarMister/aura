@@ -15,6 +15,7 @@ export const colors = {
   greenDark: '#04973E',
   greenSoft: '#EAF7EF',
   blue: '#0A52FF', // синяя ссылка («Смотреть все»)
+  focusSoft: '#EAF1FF',
   amber: '#E6A700', // предупреждение по таймеру (≥70% времени)
   danger: '#E5484D', // тревога по таймеру (≥90%) / время вышло
   white: '#FFFFFF',
@@ -36,3 +37,17 @@ export const shadow: ViewStyle =
     android: { elevation: 1 },
     default: {},
   }) ?? {};
+
+export const focusRing: ViewStyle = {
+  borderColor: colors.blue,
+  shadowColor: colors.blue,
+  shadowOpacity: 0.28,
+  shadowRadius: 9,
+  shadowOffset: { width: 0, height: 0 },
+  elevation: 7,
+  transform: [{ scale: 1.02 }],
+};
+
+export const focusFill: ViewStyle = {
+  backgroundColor: colors.focusSoft,
+};

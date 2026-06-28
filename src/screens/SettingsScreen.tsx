@@ -1,12 +1,13 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CatalogDraft, CatalogItemModal } from '@/components/modals/CatalogItemModal';
 import { ConnectionModal } from '@/components/modals/ConnectionModal';
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
 import { Page } from '@/components/Page';
 import { BottomBar, Card, OutlineButton, ScreenHeader } from '@/components/ui';
-import { colors, sp } from '@/theme';
+import { colors, focusFill, focusRing, sp } from '@/theme';
 import { ConnMode, ConnStatus, DeviceRole } from '@/types';
 import { useStore } from '@/store/useStore';
 import { money } from '@/utils/format';
@@ -63,7 +64,15 @@ export function SettingsScreen() {
 
       {/* Напитки (раскрывающийся блок) */}
       <Card style={{ marginBottom: sp(5) }}>
-        <Pressable style={styles.cardHead} onPress={() => setDrinksOpen((v) => !v)}>
+        <Pressable
+          style={({ focused, pressed }) => [
+            styles.cardHead,
+            focused && focusFill,
+            focused && focusRing,
+            pressed && { opacity: 0.6 },
+          ]}
+          onPress={() => setDrinksOpen((v) => !v)}
+        >
           <Text style={styles.cardTitle}>Напитки</Text>
           <Feather
             name={drinksOpen ? 'chevron-up' : 'chevron-down'}
@@ -122,7 +131,15 @@ export function SettingsScreen() {
 
       {/* Связь с ТВ */}
       <Card style={{ marginTop: sp(5) }}>
-        <Pressable style={styles.connRow} onPress={() => setConnOpen(true)}>
+        <Pressable
+          style={({ focused, pressed }) => [
+            styles.connRow,
+            focused && focusFill,
+            focused && focusRing,
+            pressed && { opacity: 0.6 },
+          ]}
+          onPress={() => setConnOpen(true)}
+        >
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>Связь с ТВ</Text>
             <Text style={styles.connSub}>
@@ -166,7 +183,12 @@ function ItemRow({
       <Pressable
         onPress={onEdit}
         hitSlop={10}
-        style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.6 }]}
+        style={({ focused, pressed }) => [
+          styles.editBtn,
+          focused && focusFill,
+          focused && focusRing,
+          pressed && { opacity: 0.6 },
+        ]}
       >
         <Feather name="edit-2" size={18} color={colors.textMuted} />
       </Pressable>
@@ -179,6 +201,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    borderRadius: 10,
+    padding: sp(1),
+    margin: -sp(1),
   },
   cardTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
 
@@ -190,9 +215,9 @@ const styles = StyleSheet.create({
   },
   divider: { borderTopWidth: 1, borderTopColor: colors.divider },
   rowTitle: { fontSize: 15, color: colors.text, fontWeight: '500', flex: 1 },
-  editBtn: { padding: sp(1) },
+  editBtn: { padding: sp(1), borderRadius: 999 },
 
-  connRow: { flexDirection: 'row', alignItems: 'center', gap: sp(3) },
+  connRow: { flexDirection: 'row', alignItems: 'center', gap: sp(3), borderRadius: 10 },
   connSub: { fontSize: 14, color: colors.textMuted, marginTop: 3 },
   dot: { width: 10, height: 10, borderRadius: 5 },
 });

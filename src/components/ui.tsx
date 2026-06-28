@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import React from 'react';
 import {
   Modal,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +10,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { colors, radius, shadow, sp } from '@/theme';
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
+import { colors, focusFill, focusRing, radius, shadow, sp } from '@/theme';
 
 type IconName = keyof typeof Feather.glyphMap;
 
@@ -68,7 +68,12 @@ export function Segmented<T extends string>({
           <Pressable
             key={it.key}
             onPress={() => onChange(it.key)}
-            style={[styles.segItem, active ? styles.segItemActive : styles.segItemIdle]}
+            style={({ focused, pressed }) => [
+              styles.segItem,
+              active ? styles.segItemActive : styles.segItemIdle,
+              focused && focusRing,
+              pressed && styles.pressed,
+            ]}
           >
             <Text style={[styles.segText, active ? styles.segTextActive : styles.segTextIdle]}>
               {it.label}
@@ -88,12 +93,14 @@ export function SquareButton({
   onPress,
   variant = 'default',
   disabled,
+  showIcon = true,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
   variant?: 'default' | 'danger';
   disabled?: boolean;
+  showIcon?: boolean;
 }) {
   const tint =
     disabled ? colors.textMuted : variant === 'danger' ? colors.text : colors.text;
@@ -101,13 +108,14 @@ export function SquareButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [
+      style={({ focused, pressed }) => [
         styles.square,
+        focused && focusRing,
         pressed && !disabled && styles.pressed,
         disabled && styles.squareDisabled,
       ]}
     >
-      <Feather name={icon} size={26} color={tint} />
+      {showIcon ? <Feather name={icon} size={26} color={tint} /> : null}
       <Text style={[styles.squareLabel, disabled && { color: colors.textMuted }]}>{label}</Text>
     </Pressable>
   );
@@ -124,7 +132,11 @@ export function BottomBar({ left, right }: { left: BottomBtn; right: BottomBtn }
         <Pressable
           key={i}
           onPress={b.onPress}
-          style={({ pressed }) => [styles.bottomBtn, pressed && styles.pressed]}
+          style={({ focused, pressed }) => [
+            styles.bottomBtn,
+            focused && focusRing,
+            pressed && styles.pressed,
+          ]}
         >
           {b.icon ? <Feather name={b.icon} size={18} color={colors.text} /> : null}
           <Text style={styles.bottomBtnText}>{b.label}</Text>
@@ -146,7 +158,11 @@ export function OutlineButton({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]}
+      style={({ focused, pressed }) => [
+        styles.outlineBtn,
+        focused && focusRing,
+        pressed && styles.pressed,
+      ]}
     >
       <Text style={styles.outlineBtnText}>{label}</Text>
     </Pressable>
@@ -159,10 +175,12 @@ export function PrimaryButton({
   label,
   onPress,
   variant = 'green',
+  style,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'green' | 'danger' | 'ghost';
+  style?: ViewStyle;
 }) {
   const bg =
     variant === 'green' ? colors.green : variant === 'danger' ? colors.danger : colors.white;
@@ -170,10 +188,12 @@ export function PrimaryButton({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({ focused, pressed }) => [
         styles.primaryBtn,
         { backgroundColor: bg },
         variant === 'ghost' && { borderWidth: 1, borderColor: colors.border },
+        focused && focusRing,
+        style,
         pressed && styles.pressed,
       ]}
     >
@@ -195,14 +215,22 @@ export function Stepper({
     <View style={styles.stepper}>
       <Pressable
         onPress={() => onChange(Math.max(0, value - 1))}
-        style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}
+        style={({ focused, pressed }) => [
+          styles.stepBtn,
+          focused && focusRing,
+          pressed && styles.pressed,
+        ]}
       >
         <Feather name="minus" size={18} color={value > 0 ? colors.text : colors.textMuted} />
       </Pressable>
       <Text style={styles.stepValue}>{value}</Text>
       <Pressable
         onPress={() => onChange(value + 1)}
-        style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}
+        style={({ focused, pressed }) => [
+          styles.stepBtn,
+          focused && focusRing,
+          pressed && styles.pressed,
+        ]}
       >
         <Feather name="plus" size={18} color={colors.green} />
       </Pressable>
@@ -228,17 +256,26 @@ export function AppModal({
   const { height } = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+      <Pressable focusable={false} style={styles.backdrop} onPress={onClose}>
+        <Pressable focusable={false} style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
           <View style={styles.sheetHead}>
             <Text style={styles.sheetTitle}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.sheetClose}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              style={({ focused, pressed }) => [
+                styles.sheetClose,
+                focused && focusFill,
+                focused && focusRing,
+                pressed && styles.pressed,
+              ]}
+            >
               <Feather name="x" size={22} color={colors.textMuted} />
             </Pressable>
           </View>
           <ScrollView
-            style={{ maxHeight: height * 0.66 }}
+            style={{ maxHeight: height * 0.82 }}
             contentContainerStyle={{ paddingBottom: sp(1) }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={scrollbar}

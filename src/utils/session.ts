@@ -2,7 +2,8 @@ import { GameSession } from '@/types';
 
 /** Прошедшее время сессии в секундах (реальное, от момента открытия). */
 export function elapsedSeconds(session: GameSession, now: number): number {
-  return Math.max(0, Math.floor((now - session.startedAt) / 1000));
+  const effectiveNow = session.status === 'paused' && session.pausedAt ? session.pausedAt : now;
+  return Math.max(0, Math.floor((effectiveNow - session.startedAt - (session.pausedMs ?? 0)) / 1000));
 }
 
 /** Остаток забронированного времени в секундах (обратный отсчёт, не уходит ниже 0). */

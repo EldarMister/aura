@@ -30,9 +30,11 @@ export interface GameSession {
   tariffName: string;
   pricePerHour: number;
   startedAt: number; // epoch ms — момент открытия
+  pausedAt?: number | null; // epoch ms — если сейчас на паузе
+  pausedMs?: number; // суммарная длительность прошлых пауз
   durationSeconds: number; // забронированное время (для обратного отсчёта)
   drinks: DrinkItem[];
-  status: 'active';
+  status: 'active' | 'paused';
 }
 
 export interface Table {
@@ -59,7 +61,7 @@ export interface GameRecord {
   tableAmount: number; // стоимость времени
   drinksAmount: number; // стоимость напитков
   totalAmount: number; // итог
-  status: 'completed';
+  status: 'completed' | 'canceled';
 }
 
 export type ScreenName = 'tables' | 'settings' | 'stats' | 'tv';

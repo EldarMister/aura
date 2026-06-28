@@ -1,7 +1,8 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, sp } from '@/theme';
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
+import { colors, focusFill, focusRing, radius, sp } from '@/theme';
 import { GameRecord } from '@/types';
 import { duration, gameNo, hhmm, money } from '@/utils/format';
 
@@ -21,9 +22,11 @@ export function GameRow({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({ focused, pressed }) => [
         styles.row,
         card && styles.card,
+        focused && focusFill,
+        focused && focusRing,
         pressed && onPress ? { opacity: 0.6 } : null,
       ]}
     >
@@ -32,10 +35,12 @@ export function GameRow({
           {gameNo(game.number)} — {hhmm(game.endedAt)} — {game.tableName}
         </Text>
         <Text style={styles.sub} numberOfLines={1}>
-          {game.tariffName} / {duration(game.durationMinutes)}
+          {game.status === 'canceled' ? 'Отменено' : game.tariffName} / {duration(game.durationMinutes)}
         </Text>
       </View>
-      <Text style={styles.amount}>{money(game.totalAmount)}</Text>
+      <Text style={[styles.amount, game.status === 'canceled' && styles.canceled]}>
+        {game.status === 'canceled' ? 'Отменено' : money(game.totalAmount)}
+      </Text>
     </Pressable>
   );
 }
@@ -46,6 +51,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: sp(2.5),
+    borderRadius: radius.md,
   },
   card: {
     paddingVertical: sp(3.5),
@@ -59,4 +65,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: '600', color: colors.text },
   sub: { fontSize: 13, color: colors.textMuted, marginTop: 3 },
   amount: { fontSize: 16, fontWeight: '700', color: colors.green },
+  canceled: { color: colors.textMuted, fontSize: 13 },
 });

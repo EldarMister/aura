@@ -1,11 +1,13 @@
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AddDrinksModal } from '@/components/modals/AddDrinksModal';
 import { CountdownText } from '@/components/CountdownText';
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
 import { AddTimeModal } from '@/components/modals/AddTimeModal';
 import { EditSessionModal } from '@/components/modals/EditSessionModal';
+import { GameDetailModal } from '@/components/modals/GameDetailModal';
 import { OpenTableModal } from '@/components/modals/OpenTableModal';
 import { Page } from '@/components/Page';
 import {
@@ -16,7 +18,8 @@ import {
   SquareButton,
 } from '@/components/ui';
 import { useNow } from '@/hooks/useNow';
-import { colors, sp } from '@/theme';
+import { colors, focusFill, focusRing, sp } from '@/theme';
+import { GameRecord } from '@/types';
 import { useSelectedTable, useStore } from '@/store/useStore';
 import { money } from '@/utils/format';
 import { sessionTotal } from '@/utils/session';
@@ -30,8 +33,10 @@ export function TablesScreen() {
   const selectTable = useStore((s) => s.selectTable);
   const go = useStore((s) => s.go);
   const closeTable = useStore((s) => s.closeTable);
+  const tableTabs = tables.map((t) => ({ key: t.id, label: t.name }));
 
   const [modal, setModal] = useState<ModalKind>(null);
+  const [closedGame, setClosedGame] = useState<GameRecord | null>(null);
 
   const session = table.session;
   const active = table.status === 'active' && !!session;
@@ -40,7 +45,14 @@ export function TablesScreen() {
     if (active) {
       Alert.alert('Закрыть стол?', 'Игра будет сохранена в статистику.', [
         { text: 'Отмена', style: 'cancel' },
-        { text: 'Закрыть', style: 'destructive', onPress: () => closeTable(table.id) },
+        {
+          text: 'Закрыть',
+          style: 'destructive',
+          onPress: () => {
+            const record = closeTable(table.id);
+            if (record) setClosedGame(record);
+          },
+        },
       ]);
     } else {
       setModal('open');
@@ -50,10 +62,13 @@ export function TablesScreen() {
   return (
     <Page
       footer={
-        <BottomBar
-          left={{ label: 'Статистика', onPress: () => go('stats') }}
-          right={{ label: 'Настройки', onPress: () => go('settings') }}
-        />
+        <View style={styles.footerControls}>
+          <Segmented items={tableTabs} value={table.id} onChange={selectTable} />
+          <BottomBar
+            left={{ label: 'Статистика', onPress: () => go('stats') }}
+            right={{ label: 'Настройки', onPress: () => go('settings') }}
+          />
+        </View>
       }
     >
       <ScreenHeader
@@ -62,7 +77,12 @@ export function TablesScreen() {
           <Pressable
             onPress={() => go('tv')}
             hitSlop={8}
-            style={({ pressed }) => [styles.tvBtn, pressed && { opacity: 0.6 }]}
+            style={({ focused, pressed }) => [
+              styles.tvBtn,
+              focused && focusFill,
+              focused && focusRing,
+              pressed && { opacity: 0.6 },
+            ]}
           >
             <Feather name="tv" size={16} color={colors.textMuted} />
             <Text style={styles.tvBtnText}>ТВ</Text>
@@ -70,13 +90,7 @@ export function TablesScreen() {
         }
       />
 
-      <Segmented
-        items={tables.map((t) => ({ key: t.id, label: t.name }))}
-        value={table.id}
-        onChange={selectTable}
-      />
-
-      <Card style={{ marginTop: sp(4) }}>
+      <Card style={{ marginTop: sp(2) }}>
         {active && session ? (
           <ActiveCard session={session} now={now} />
         ) : (
@@ -91,12 +105,14 @@ export function TablesScreen() {
             icon={active ? 'trash-2' : 'play'}
             label={active ? 'Закрыть стол' : 'Открыть игру'}
             variant={active ? 'danger' : 'default'}
+            showIcon={false}
             onPress={onToggle}
           />
           <SquareButton
             icon="clock"
             label="Добавить время"
             disabled={!active}
+            showIcon={false}
             onPress={() => setModal('time')}
           />
         </View>
@@ -105,12 +121,14 @@ export function TablesScreen() {
             icon="coffee"
             label="Добавить напитки"
             disabled={!active}
+            showIcon={false}
             onPress={() => setModal('drinks')}
           />
           <SquareButton
             icon="edit-2"
             label="Редактировать"
             disabled={!active}
+            showIcon={false}
             onPress={() => setModal('edit')}
           />
         </View>
@@ -137,7 +155,12 @@ export function TablesScreen() {
         visible={modal === 'edit'}
         tableId={table.id}
         onClose={() => setModal(null)}
+        onCanceled={(record) => {
+          setModal(null);
+          setClosedGame(record);
+        }}
       />
+      <GameDetailModal game={closedGame} onClose={() => setClosedGame(null)} />
     </Page>
   );
 }
@@ -222,6 +245,7 @@ function DetailRow({
 const Divider = () => <View style={styles.divider} />;
 
 const styles = StyleSheet.create({
+  footerControls: { gap: sp(3) },
   tvBtn: {
     flexDirection: 'row',
     alignItems: 'center',

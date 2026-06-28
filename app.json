@@ -7,7 +7,20 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "backgroundColor": "#FFFFFF",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "./plugins/withAndroidReleaseOptimizations",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/feather.ttf"
+          ]
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.billiard.pos",
@@ -18,7 +31,16 @@
     "android": {
       "package": "com.billiard.pos",
       "usesCleartextTraffic": true,
-      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"]
-    }
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d45e71b8-85d8-433b-8500-8157344111b8"
+      }
+    },
+    "owner": "eldarchkk"
   }
 }

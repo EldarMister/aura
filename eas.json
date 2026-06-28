@@ -4,13 +4,30 @@
     "appVersionSource": "local"
   },
   "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SYNC_URL": "https://aura-3ic0.onrender.com",
+        "EXPO_PUBLIC_SYNC_ROOM": "club-1"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
-    "production": {}
+    "production-apk": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SYNC_URL": "https://aura-3ic0.onrender.com",
+        "EXPO_PUBLIC_SYNC_ROOM": "club-1"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
   }
 }

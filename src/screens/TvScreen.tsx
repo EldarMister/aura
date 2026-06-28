@@ -1,8 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as Network from 'expo-network';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -11,14 +10,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CountdownText } from '@/components/CountdownText';
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
 import { useNow } from '@/hooks/useNow';
 import { LAN_PORT } from '@/lib/lanTransport';
-import { playTableTimeUp } from '@/lib/sound';
-import { colors, sp } from '@/theme';
+import { colors, focusFill, focusRing, sp } from '@/theme';
 import { Table } from '@/types';
 import { useStore } from '@/store/useStore';
 import { money, wallClock } from '@/utils/format';
-import { remainingSeconds, sessionTotal } from '@/utils/session';
+import { sessionTotal } from '@/utils/session';
 
 /**
  * Экран для телевизора. Пока без реального подключения — данные из локального
@@ -51,20 +50,6 @@ export function TvScreen() {
     };
   }, [connection.mode, connection.role]);
 
-  // Озвучка «время вышло»: по разу на каждую сессию (ключ — стол + момент старта).
-  const announced = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    tables.forEach((t, idx) => {
-      if (t.status === 'active' && t.session) {
-        const key = `${t.id}:${t.session.startedAt}`;
-        if (remainingSeconds(t.session, now) <= 0 && !announced.current.has(key)) {
-          announced.current.add(key);
-          playTableTimeUp(idx);
-        }
-      }
-    });
-  }, [now, tables]);
-
   const fs = {
     title: Math.min(40, Math.max(22, col * 0.17)),
     status: Math.min(20, Math.max(13, col * 0.08)),
@@ -79,7 +64,12 @@ export function TvScreen() {
         <Pressable
           onPress={() => go('tables')}
           hitSlop={12}
-          style={({ pressed }) => [styles.back, pressed && { opacity: 0.6 }]}
+          style={({ focused, pressed }) => [
+            styles.back,
+            focused && focusFill,
+            focused && focusRing,
+            pressed && { opacity: 0.6 },
+          ]}
         >
           <Feather name="chevron-left" size={18} color={colors.textMuted} />
           <Text style={styles.backText}>Назад</Text>
@@ -196,6 +186,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: sp(1),
+    borderRadius: 999,
+    paddingHorizontal: sp(2),
   },
   backText: { fontSize: 14, color: colors.textMuted, fontWeight: '500' },
   wallClock: { fontSize: 16, color: colors.text, fontWeight: '600', fontVariant: ['tabular-nums'] },

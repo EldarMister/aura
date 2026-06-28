@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initSync } from '@/lib/sync';
+import { TimeUpSoundWatcher } from '@/components/TimeUpSoundWatcher';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { StatsScreen } from '@/screens/StatsScreen';
 import { TablesScreen } from '@/screens/TablesScreen';
@@ -25,6 +26,10 @@ function useHydrated(): boolean {
 export default function App() {
   const screen = useStore((s) => s.screen);
   const hydrated = useHydrated();
+  // Шрифт иконок Feather вшит в сборку нативно (плагин expo-font, файл
+  // assets/fonts/feather.ttf — имя в нижнем регистре, как требует
+  // @expo/vector-icons на Android). Глифы доступны сразу, отдельная загрузка
+  // через useFonts не нужна и раньше давала конфликт/белый экран.
 
   // Поднимаем синхронизацию после восстановления настроек связи.
   useEffect(() => {
@@ -40,6 +45,7 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        {hydrated ? <TimeUpSoundWatcher /> : null}
         {!hydrated ? null : screen === 'tables' ? (
           <TablesScreen />
         ) : screen === 'settings' ? (

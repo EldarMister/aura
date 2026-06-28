@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
 import { GameRow } from '@/components/GameRow';
 import { AllGamesModal } from '@/components/modals/AllGamesModal';
 import { GameDetailModal } from '@/components/modals/GameDetailModal';
 import { Page } from '@/components/Page';
 import { BottomBar, Card, ScreenHeader, Segmented } from '@/components/ui';
-import { colors, sp } from '@/theme';
+import { colors, focusFill, focusRing, sp } from '@/theme';
 import { GameRecord, StatsPeriod } from '@/types';
 import { useStore } from '@/store/useStore';
 import { money, plural } from '@/utils/format';
@@ -40,15 +41,16 @@ export function StatsScreen() {
     const from = periodStart(period);
     // history уже отсортирована новыми сверху
     const games = history.filter((r) => r.endedAt >= from);
+    const completed = games.filter((r) => r.status === 'completed');
     const perTable = new Map<string, number>();
     let drinksSold = 0;
     let revenue = 0;
-    for (const r of games) {
+    for (const r of completed) {
       drinksSold += r.drinksCount;
       revenue += r.totalAmount;
       perTable.set(r.tableId, (perTable.get(r.tableId) ?? 0) + 1);
     }
-    return { games, drinksSold, revenue, perTable };
+    return { games, completed, drinksSold, revenue, perTable };
   }, [history, period]);
 
   return (
@@ -67,7 +69,7 @@ export function StatsScreen() {
       <Card style={{ marginTop: sp(4), marginBottom: sp(5) }}>
         <StatRow label="Продано напитков" value={`${data.drinksSold} шт.`} />
         <Divider />
-        <StatRow label="Было игр" value={`${data.games.length}`} />
+        <StatRow label="Было игр" value={`${data.completed.length}`} />
         <Divider />
         <StatRow label="Выручка" value={money(data.revenue)} />
       </Card>
@@ -104,7 +106,12 @@ export function StatsScreen() {
             <Pressable
               onPress={() => setAllOpen(true)}
               hitSlop={8}
-              style={({ pressed }) => [styles.linkWrap, pressed && { opacity: 0.6 }]}
+              style={({ focused, pressed }) => [
+                styles.linkWrap,
+                focused && focusFill,
+                focused && focusRing,
+                pressed && { opacity: 0.6 },
+              ]}
             >
               <Text style={styles.link}>Смотреть все</Text>
             </Pressable>
@@ -152,6 +159,13 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   tableName: { fontSize: 15, color: colors.text, fontWeight: '500' },
   empty: { fontSize: 14, color: colors.textMuted, marginTop: sp(3) },
-  linkWrap: { marginTop: sp(2), alignSelf: 'flex-start' },
+  linkWrap: {
+    marginTop: sp(2),
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: sp(2),
+    paddingVertical: sp(1),
+    marginLeft: -sp(2),
+  },
   link: { fontSize: 15, fontWeight: '600', color: colors.blue },
 });
