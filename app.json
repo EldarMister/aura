@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Бильярд",
+    "slug": "billiard-pos",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "backgroundColor": "#FFFFFF",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.billiard.pos",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Приложению нужна локальная сеть, чтобы телефон напрямую подключался к ТВ по Wi-Fi."
+      }
+    },
+    "android": {
+      "package": "com.billiard.pos",
+      "usesCleartextTraffic": true,
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"]
+    }
+  }
+}
