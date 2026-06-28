@@ -5,7 +5,7 @@ import { Pool } from 'pg';
 import { Server } from 'socket.io';
 
 const port = Number(process.env.PORT || 3000);
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL?.trim();
 
 const memoryState = new Map();
 const pool = databaseUrl
