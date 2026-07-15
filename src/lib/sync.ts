@@ -1,4 +1,6 @@
 import { io, Socket } from 'socket.io-client';
+import * as Network from 'expo-network';
+import { AppState } from 'react-native';
 
 import { CLOUD_SYNC_ROOM, CLOUD_SYNC_URL } from '@/config/syncConfig';
 import { createLanClient, createLanServer, LanLink } from '@/lib/lanTransport';
@@ -35,7 +37,6 @@ const snapshot = (): SyncSnapshot => {
     drinks: s.drinks,
     history: s.history,
     gameCounter: s.gameCounter,
-    updatedAt: Date.now(),
   };
 };
 
@@ -49,7 +50,7 @@ const applySnapshot = (snap: SyncSnapshot) => {
 
 const applyCloudSnapshot = (snap: SyncSnapshot) => {
   if (!snap) return;
-  useStore.getState().applyRemoteSnapshot(snap);
+  applySnapshot(snap);
 };
 
 /* --------------------------------- cloud ---------------------------------- */
@@ -62,41 +63,107 @@ function startCloud(conn: ConnectionConfig): Transport {
     return { push: () => undefined, stop: () => undefined };
   }
   setStatus('connecting');
-  let gotInitialState = false;
   const socket: Socket = io(url, {
-    transports: ['websocket'],
+    // На части Android TV WebSocket после возврата Wi-Fi может остаться в
+    // подвешенном состоянии. Polling остаётся резервным транспортом.
+    transports: ['websocket', 'polling'],
+    tryAllTransports: true,
     reconnection: true,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1500,
+    reconnectionDelayMax: 7000,
+    randomizationFactor: 0.4,
     timeout: 8000,
   });
 
-  socket.on('connect', () => {
+  const joinAndSync = () => {
     setStatus('connected');
     socket.emit('join', { room, role: conn.role });
-    socket.emit('request-state');
     if (conn.role === 'controller') {
-      setTimeout(() => {
-        if (!gotInitialState && socket.connected) socket.emit('state', snapshot());
-      }, 2000);
+      const snap = snapshot();
+      lastSnapshot = JSON.stringify(snap);
+      socket.emit('state', snap);
+    } else {
+      socket.emit('request-state');
     }
+  };
+
+  socket.on('connect', joinAndSync);
+  socket.io.on('reconnect_attempt', () => setStatus('connecting'));
+  socket.io.on('reconnect_error', () => setStatus('connecting'));
+
+  let stopped = false;
+  let recoveryTimers: ReturnType<typeof setTimeout>[] = [];
+
+  const clearRecoveryTimers = () => {
+    recoveryTimers.forEach(clearTimeout);
+    recoveryTimers = [];
+  };
+
+  const reconnect = () => {
+    if (stopped || socket.connected) return;
+    setStatus('connecting');
+    socket.connect();
+  };
+
+  // Срабатывает именно в момент, когда Android сообщил о возврате сети.
+  // Повторные попытки нужны, потому что Wi-Fi часто появляется раньше,
+  // чем телевизор получает доступ к интернету.
+  const recoverAfterNetworkReturn = () => {
+    clearRecoveryTimers();
+    reconnect();
+    [1000, 3000, 7000].forEach((delay) => {
+      recoveryTimers.push(setTimeout(reconnect, delay));
+    });
+    recoveryTimers.push(
+      setTimeout(() => {
+        if (stopped || socket.connected) return;
+        // Перезапускаем только клиентское подключение, если менеджер
+        // socket.io остался в старом состоянии после долгого офлайна.
+        socket.disconnect();
+        socket.connect();
+      }, 12000),
+    );
+  };
+
+  const networkSubscription = Network.addNetworkStateListener((state) => {
+    const networkAvailable = state.isConnected && state.isInternetReachable !== false;
+    if (networkAvailable) recoverAfterNetworkReturn();
+    else if (!socket.connected) setStatus('connecting');
+  });
+
+  const appStateSubscription = AppState.addEventListener('change', (state) => {
+    if (state === 'active') recoverAfterNetworkReturn();
+  });
+
+  const reconnectWatchdog = setInterval(() => {
+    reconnect();
+  }, 5000);
+
+  socket.on('disconnect', () => {
+    setStatus('connecting');
   });
   socket.on('state', (snap: SyncSnapshot) => {
-    gotInitialState = true;
     applyCloudSnapshot(snap);
     lastSnapshot = JSON.stringify(snapshot());
   });
   socket.on('state-missing', () => {
-    gotInitialState = true;
     if (conn.role === 'controller') socket.emit('state', snapshot());
   });
-  socket.on('disconnect', () => setStatus('connecting'));
-  socket.on('connect_error', () => setStatus('error'));
+  socket.on('connect_error', () => setStatus('connecting'));
 
   return {
     push: (snap) => {
       if (socket.connected) socket.emit('state', snap);
     },
     stop: () => {
+      stopped = true;
+      clearInterval(reconnectWatchdog);
+      clearRecoveryTimers();
+      networkSubscription.remove();
+      appStateSubscription.remove();
+      socket.io.off('reconnect_attempt');
+      socket.io.off('reconnect_error');
       socket.removeAllListeners();
       socket.disconnect();
     },

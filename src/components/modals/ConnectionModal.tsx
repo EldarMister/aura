@@ -72,6 +72,7 @@ export function ConnectionModal({
             items={MODES}
             value={connection.mode}
             onChange={(mode) => setConnection({ mode })}
+            autoFocus
           />
         </Field>
 

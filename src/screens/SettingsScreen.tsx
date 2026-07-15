@@ -62,6 +62,30 @@ export function SettingsScreen() {
     >
       <ScreenHeader title="Настройки" />
 
+      {/* Связь с ТВ */}
+      <Card style={{ marginBottom: sp(5) }}>
+        <Pressable
+          style={({ focused, pressed }) => [
+            styles.connRow,
+            focused && focusFill,
+            focused && focusRing,
+            pressed && { opacity: 0.6 },
+          ]}
+          onPress={() => setConnOpen(true)}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>Связь с ТВ</Text>
+            <Text style={styles.connSub}>
+              {connection.mode === 'off'
+                ? 'Выключена'
+                : `${MODE_LABEL[connection.mode]} · ${ROLE_LABEL[connection.role]}`}
+            </Text>
+          </View>
+          <View style={[styles.dot, { backgroundColor: dotColor }]} />
+          <Feather name="chevron-right" size={20} color={colors.textMuted} />
+        </Pressable>
+      </Card>
+
       {/* Напитки (раскрывающийся блок) */}
       <Card style={{ marginBottom: sp(5) }}>
         <Pressable
@@ -127,30 +151,6 @@ export function SettingsScreen() {
             />
           </View>
         </View>
-      </Card>
-
-      {/* Связь с ТВ */}
-      <Card style={{ marginTop: sp(5) }}>
-        <Pressable
-          style={({ focused, pressed }) => [
-            styles.connRow,
-            focused && focusFill,
-            focused && focusRing,
-            pressed && { opacity: 0.6 },
-          ]}
-          onPress={() => setConnOpen(true)}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Связь с ТВ</Text>
-            <Text style={styles.connSub}>
-              {connection.mode === 'off'
-                ? 'Выключена'
-                : `${MODE_LABEL[connection.mode]} · ${ROLE_LABEL[connection.role]}`}
-            </Text>
-          </View>
-          <View style={[styles.dot, { backgroundColor: dotColor }]} />
-          <Feather name="chevron-right" size={20} color={colors.textMuted} />
-        </Pressable>
       </Card>
 
       <CatalogItemModal

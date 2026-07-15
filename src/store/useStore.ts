@@ -12,7 +12,7 @@ import {
   Table,
   Tariff,
 } from '@/types';
-import { drinksTotal, sessionTotal, timeCost } from '@/utils/session';
+import { drinksTotal, elapsedSeconds, sessionTotal, timeCost } from '@/utils/session';
 import { uid } from '@/utils/format';
 
 /* ----------------------------- начальные данные ---------------------------- */
@@ -66,12 +66,10 @@ interface StoreState {
   selectTable: (tableId: string) => void;
 
   /* сессии столов */
-  openGame: (tableId: string, tariffId: string, durationSeconds: number) => void;
-  updateSession: (tableId: string, tariffId: string, durationSeconds: number) => void;
+  openGame: (tableId: string, tariffId: string) => void;
+  updateSession: (tableId: string, tariffId: string) => void;
   togglePause: (tableId: string) => void;
   changeTariff: (tableId: string, tariffId: string) => void;
-  addTime: (tableId: string, minutes: number) => void;
-  resetTime: (tableId: string) => void;
   setDrinkQty: (tableId: string, drink: Drink, quantity: number) => void;
   closeTable: (tableId: string) => GameRecord | null;
   cancelTable: (tableId: string) => GameRecord | null;
@@ -99,7 +97,7 @@ const makeRecord = (
   if (!table.session) return null;
   const now = Date.now();
   const s = table.session;
-  const tableAmount = status === 'completed' ? timeCost(s) : 0;
+  const tableAmount = status === 'completed' ? timeCost(s, now) : 0;
   const drinksAmount = status === 'completed' ? drinksTotal(s) : 0;
   const number = state.gameCounter + 1;
   return {
@@ -112,7 +110,7 @@ const makeRecord = (
     pricePerHour: s.pricePerHour,
     startedAt: s.startedAt,
     endedAt: now,
-    durationMinutes: Math.round(s.durationSeconds / 60),
+    durationMinutes: Math.max(1, Math.ceil(elapsedSeconds(s, now) / 60)),
     drinks: s.drinks.map((d) => ({
       ...d,
       total: status === 'completed' ? d.price * d.quantity : 0,
@@ -155,7 +153,7 @@ export const useStore = create<StoreState>()(
       go: (screen) => set({ screen }),
       selectTable: (selectedTableId) => set({ selectedTableId }),
 
-      openGame: (tableId, tariffId, durationSeconds) =>
+      openGame: (tableId, tariffId) =>
         set((state) => {
           const tariff = state.tariffs.find((t) => t.id === tariffId);
           if (!tariff) return {};
@@ -170,7 +168,7 @@ export const useStore = create<StoreState>()(
               startedAt: Date.now(),
               pausedAt: null,
               pausedMs: 0,
-              durationSeconds: Math.max(0, Math.round(durationSeconds)),
+              durationSeconds: 0,
               drinks: [],
               status: 'active',
             },
@@ -195,9 +193,8 @@ export const useStore = create<StoreState>()(
           );
         }),
 
-      updateSession: (tableId, tariffId, durationSeconds) =>
+      updateSession: (tableId, tariffId) =>
         set((state) => {
-          const now = Date.now();
           const tariff = state.tariffs.find((t) => t.id === tariffId);
           if (!tariff) return {};
           return mapTable(state, tableId, (t) =>
@@ -209,10 +206,6 @@ export const useStore = create<StoreState>()(
                     tariffId: tariff.id,
                     tariffName: tariff.name,
                     pricePerHour: tariff.pricePerHour,
-                    startedAt: now,
-                    pausedAt: t.session.status === 'paused' ? now : null,
-                    pausedMs: 0,
-                    durationSeconds: Math.max(0, Math.round(durationSeconds)),
                   },
                 }
               : t,
@@ -247,40 +240,6 @@ export const useStore = create<StoreState>()(
             };
           });
         }),
-
-      // Добавляет минуты к забронированному времени (продлевает обратный отсчёт).
-      addTime: (tableId, minutes) =>
-        set((state) =>
-          mapTable(state, tableId, (t) =>
-            t.session
-              ? {
-                  ...t,
-                  session: {
-                    ...t.session,
-                    durationSeconds: Math.max(0, t.session.durationSeconds + minutes * 60),
-                  },
-                }
-              : t,
-          ),
-        ),
-
-      // Перезапускает отсчёт с начала (полное забронированное время заново).
-      resetTime: (tableId) =>
-        set((state) =>
-          mapTable(state, tableId, (t) =>
-            t.session
-              ? {
-                  ...t,
-                  session: {
-                    ...t.session,
-                    startedAt: Date.now(),
-                    pausedAt: t.session.status === 'paused' ? Date.now() : null,
-                    pausedMs: 0,
-                  },
-                }
-              : t,
-          ),
-        ),
 
       setDrinkQty: (tableId, drink, quantity) =>
         set((state) =>

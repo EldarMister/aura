@@ -4,7 +4,6 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initSync } from '@/lib/sync';
-import { TimeUpSoundWatcher } from '@/components/TimeUpSoundWatcher';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { StatsScreen } from '@/screens/StatsScreen';
 import { TablesScreen } from '@/screens/TablesScreen';
@@ -45,7 +44,6 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        {hydrated ? <TimeUpSoundWatcher /> : null}
         {!hydrated ? null : screen === 'tables' ? (
           <TablesScreen />
         ) : screen === 'settings' ? (

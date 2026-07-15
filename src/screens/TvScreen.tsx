@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CountdownText } from '@/components/CountdownText';
+import { ElapsedText } from '@/components/ElapsedText';
 import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
 import { useNow } from '@/hooks/useNow';
 import { LAN_PORT } from '@/lib/lanTransport';
@@ -51,11 +51,11 @@ export function TvScreen() {
   }, [connection.mode, connection.role]);
 
   const fs = {
-    title: Math.min(40, Math.max(22, col * 0.17)),
-    status: Math.min(20, Math.max(13, col * 0.08)),
-    label: Math.min(16, Math.max(12, col * 0.06)),
-    value: Math.min(20, Math.max(13, col * 0.075)),
-    big: Math.min(34, Math.max(20, col * 0.15)),
+    title: Math.min(78, Math.max(42, col * 0.12)),
+    status: Math.min(36, Math.max(22, col * 0.055)),
+    label: Math.min(30, Math.max(19, col * 0.043)),
+    value: Math.min(40, Math.max(25, col * 0.058)),
+    big: Math.min(78, Math.max(46, col * 0.11)),
   };
 
   return (
@@ -113,29 +113,30 @@ function TablePane({
   return (
     <View style={styles.pane}>
       <View style={styles.titleRow}>
-        <Text style={[styles.tableTitle, { fontSize: fs.title }]}>{table.name}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.tableTitle, { fontSize: fs.title }]}>
+          {table.name}
+        </Text>
         <Text style={[styles.status, { fontSize: fs.status }]}>
           {active ? 'Открыт' : 'Свободен'}
         </Text>
       </View>
 
       {active && s ? (
-        <View style={{ marginTop: sp(5), gap: sp(5) }}>
+        <View style={styles.activeContent}>
           <View>
             <Text style={[styles.label, { fontSize: fs.label }]}>Тариф</Text>
-            <Text style={[styles.value, { fontSize: fs.value }]}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.value, { fontSize: fs.value }]}>
               {s.tariffName} — {money(s.pricePerHour)}/час
             </Text>
           </View>
 
           <View style={styles.metricRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.label, { fontSize: fs.label }]}>Осталось</Text>
-              <CountdownText
+              <Text style={[styles.label, { fontSize: fs.label }]}>Прошло</Text>
+              <ElapsedText
                 session={s}
                 now={now}
                 fit
-                baseColor={colors.green}
                 style={[styles.time, { fontSize: fs.big }]}
               />
             </View>
@@ -146,7 +147,7 @@ function TablePane({
                 adjustsFontSizeToFit
                 style={[styles.sum, { fontSize: fs.big }]}
               >
-                {money(sessionTotal(s))}
+                {money(sessionTotal(s, now))}
               </Text>
             </View>
           </View>
@@ -157,7 +158,7 @@ function TablePane({
               <Text style={[styles.value, { fontSize: fs.value, color: colors.textMuted }]}>—</Text>
             ) : (
               s.drinks.map((d) => (
-                <Text key={d.drinkId} style={[styles.value, { fontSize: fs.value }]}>
+                <Text key={d.drinkId} numberOfLines={1} adjustsFontSizeToFit style={[styles.value, { fontSize: fs.value }]}>
                   {d.name} — {d.quantity} × {money(d.price)}
                 </Text>
               ))
@@ -174,7 +175,7 @@ function TablePane({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   topBar: {
-    height: 40,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -189,13 +190,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: sp(2),
   },
-  backText: { fontSize: 14, color: colors.textMuted, fontWeight: '500' },
-  wallClock: { fontSize: 16, color: colors.text, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  backText: { fontSize: 18, color: colors.textMuted, fontWeight: '500' },
+  wallClock: { fontSize: 28, color: colors.text, fontWeight: '700', fontVariant: ['tabular-nums'] },
   lanAddress: {
     position: 'absolute',
     right: sp(4),
     maxWidth: '42%',
-    fontSize: 13,
+    fontSize: 17,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
@@ -203,19 +204,20 @@ const styles = StyleSheet.create({
   lanAddressMuted: { color: colors.textMuted },
 
   columns: { flex: 1, flexDirection: 'row' },
-  vline: { width: 1, backgroundColor: colors.border, marginVertical: sp(2) },
-  pane: { flex: 1, paddingHorizontal: sp(5), paddingTop: sp(4) },
+  vline: { width: 1, backgroundColor: colors.border, marginVertical: sp(1) },
+  pane: { flex: 1, paddingHorizontal: sp(7), paddingTop: sp(1) },
 
-  titleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  tableTitle: { fontWeight: '800', color: colors.text },
+  titleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: sp(4) },
+  tableTitle: { flex: 1, fontWeight: '800', color: colors.text },
   status: { color: colors.green, fontWeight: '600' },
 
-  label: { color: colors.green, fontWeight: '600', marginBottom: sp(1.5) },
-  value: { color: colors.text, fontWeight: '500', marginBottom: 2 },
+  activeContent: { marginTop: sp(3), gap: sp(5) },
+  label: { color: colors.green, fontWeight: '700', marginBottom: sp(1.5) },
+  value: { color: colors.text, fontWeight: '600', marginBottom: 3 },
 
-  metricRow: { flexDirection: 'row' },
+  metricRow: { flexDirection: 'row', gap: sp(5) },
   time: { color: colors.green, fontWeight: '800', fontVariant: ['tabular-nums'] },
   sum: { color: colors.text, fontWeight: '800', fontVariant: ['tabular-nums'] },
 
-  free: { marginTop: sp(6), color: colors.textMuted },
+  free: { marginTop: sp(4), color: colors.textMuted },
 });

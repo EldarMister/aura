@@ -3,9 +3,8 @@ import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AddDrinksModal } from '@/components/modals/AddDrinksModal';
-import { CountdownText } from '@/components/CountdownText';
+import { ElapsedText } from '@/components/ElapsedText';
 import { FocusablePressable as Pressable } from '@/components/FocusablePressable';
-import { AddTimeModal } from '@/components/modals/AddTimeModal';
 import { EditSessionModal } from '@/components/modals/EditSessionModal';
 import { GameDetailModal } from '@/components/modals/GameDetailModal';
 import { OpenTableModal } from '@/components/modals/OpenTableModal';
@@ -24,7 +23,7 @@ import { useSelectedTable, useStore } from '@/store/useStore';
 import { money } from '@/utils/format';
 import { sessionTotal } from '@/utils/session';
 
-type ModalKind = 'open' | 'time' | 'drinks' | 'edit' | null;
+type ModalKind = 'open' | 'drinks' | 'edit' | null;
 
 export function TablesScreen() {
   const now = useNow();
@@ -32,7 +31,10 @@ export function TablesScreen() {
   const table = useSelectedTable();
   const selectTable = useStore((s) => s.selectTable);
   const go = useStore((s) => s.go);
+  const tariffs = useStore((s) => s.tariffs);
+  const openGame = useStore((s) => s.openGame);
   const closeTable = useStore((s) => s.closeTable);
+  const togglePause = useStore((s) => s.togglePause);
   const tableTabs = tables.map((t) => ({ key: t.id, label: t.name }));
 
   const [modal, setModal] = useState<ModalKind>(null);
@@ -55,6 +57,10 @@ export function TablesScreen() {
         },
       ]);
     } else {
+      if (tariffs.length === 1) {
+        openGame(table.id, tariffs[0].id);
+        return;
+      }
       setModal('open');
     }
   };
@@ -109,11 +115,11 @@ export function TablesScreen() {
             onPress={onToggle}
           />
           <SquareButton
-            icon="clock"
-            label="Добавить время"
+            icon={session?.status === 'paused' ? 'play' : 'pause'}
+            label={session?.status === 'paused' ? 'Продолжить' : 'Пауза'}
             disabled={!active}
             showIcon={false}
-            onPress={() => setModal('time')}
+            onPress={() => togglePause(table.id)}
           />
         </View>
         <View style={styles.gridRow}>
@@ -140,11 +146,6 @@ export function TablesScreen() {
         tableId={table.id}
         tableName={table.name}
         onClose={() => setModal(null)}
-      />
-      <AddTimeModal
-        visible={modal === 'time'}
-        onClose={() => setModal(null)}
-        onAdd={(minutes) => useStore.getState().addTime(table.id, minutes)}
       />
       <AddDrinksModal
         visible={modal === 'drinks'}
@@ -183,8 +184,8 @@ function ActiveCard({
           <Text style={styles.statusOpen}>Открыт</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={styles.label}>Осталось</Text>
-          <CountdownText session={session} now={now} style={styles.timer} baseColor={colors.text} />
+          <Text style={styles.label}>Прошло</Text>
+          <ElapsedText session={session} now={now} style={styles.timer} />
         </View>
       </View>
 
@@ -194,7 +195,7 @@ function ActiveCard({
         value={`${session.tariffName} — ${money(session.pricePerHour)}/час`}
       />
       <Divider />
-      <DetailRow label="Сумма" value={money(sessionTotal(session))} valueStrong />
+      <DetailRow label="Сумма" value={money(sessionTotal(session, now))} valueStrong />
       <Divider />
 
       <View style={styles.drinksRow}>

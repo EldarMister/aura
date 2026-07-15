@@ -22,6 +22,9 @@ export function FocusablePressable({
   style,
   onBlur,
   onFocus,
+  onPress,
+  disabled,
+  focusable = true,
   ...props
 }: FocusablePressableProps) {
   const [focused, setFocused] = useState(false);
@@ -29,6 +32,9 @@ export function FocusablePressable({
   return (
     <Pressable
       {...props}
+      focusable={!disabled && focusable}
+      disabled={disabled}
+      onPress={onPress}
       onBlur={(event) => {
         setFocused(false);
         onBlur?.(event);
@@ -39,7 +45,7 @@ export function FocusablePressable({
       }}
       style={
         typeof style === 'function'
-          ? (state) => style({ ...state, focused })
+          ? (state) => style({ ...state, focused: focused || Boolean((state as FocusableState).focused) })
           : style
       }
     />

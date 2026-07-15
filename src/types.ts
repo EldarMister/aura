@@ -32,7 +32,7 @@ export interface GameSession {
   startedAt: number; // epoch ms — момент открытия
   pausedAt?: number | null; // epoch ms — если сейчас на паузе
   pausedMs?: number; // суммарная длительность прошлых пауз
-  durationSeconds: number; // забронированное время (для обратного отсчёта)
+  durationSeconds: number; // legacy-поле для совместимости сохранённых данных
   drinks: DrinkItem[];
   status: 'active' | 'paused';
 }
@@ -55,7 +55,7 @@ export interface GameRecord {
   pricePerHour: number;
   startedAt: number;
   endedAt: number;
-  durationMinutes: number; // забронированная длительность
+  durationMinutes: number; // фактическая длительность
   drinks: DrinkItem[];
   drinksCount: number; // суммарное количество напитков
   tableAmount: number; // стоимость времени

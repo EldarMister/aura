@@ -4,6 +4,7 @@
     "slug": "billiard-pos",
     "version": "0.1.0",
     "orientation": "default",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "backgroundColor": "#FFFFFF",
@@ -30,10 +31,17 @@
     },
     "android": {
       "package": "com.billiard.pos",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
       "usesCleartextTraffic": true,
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.VIBRATE"
       ]
     },
     "extra": {

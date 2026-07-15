@@ -55,10 +55,12 @@ export function Segmented<T extends string>({
   items,
   value,
   onChange,
+  autoFocus = false,
 }: {
   items: SegItem<T>[];
   value: T;
   onChange: (key: T) => void;
+  autoFocus?: boolean;
 }) {
   return (
     <View style={styles.segRow}>
@@ -67,10 +69,12 @@ export function Segmented<T extends string>({
         return (
           <Pressable
             key={it.key}
+            hasTVPreferredFocus={autoFocus && active}
             onPress={() => onChange(it.key)}
             style={({ focused, pressed }) => [
               styles.segItem,
               active ? styles.segItemActive : styles.segItemIdle,
+              focused && !active && focusFill,
               focused && focusRing,
               pressed && styles.pressed,
             ]}
@@ -110,6 +114,7 @@ export function SquareButton({
       disabled={disabled}
       style={({ focused, pressed }) => [
         styles.square,
+        focused && focusFill,
         focused && focusRing,
         pressed && !disabled && styles.pressed,
         disabled && styles.squareDisabled,
@@ -134,6 +139,7 @@ export function BottomBar({ left, right }: { left: BottomBtn; right: BottomBtn }
           onPress={b.onPress}
           style={({ focused, pressed }) => [
             styles.bottomBtn,
+            focused && focusFill,
             focused && focusRing,
             pressed && styles.pressed,
           ]}
@@ -160,6 +166,7 @@ export function OutlineButton({
       onPress={onPress}
       style={({ focused, pressed }) => [
         styles.outlineBtn,
+        focused && focusFill,
         focused && focusRing,
         pressed && styles.pressed,
       ]}
@@ -192,6 +199,7 @@ export function PrimaryButton({
         styles.primaryBtn,
         { backgroundColor: bg },
         variant === 'ghost' && { borderWidth: 1, borderColor: colors.border },
+        focused && variant === 'ghost' && focusFill,
         focused && focusRing,
         style,
         pressed && styles.pressed,
@@ -217,6 +225,7 @@ export function Stepper({
         onPress={() => onChange(Math.max(0, value - 1))}
         style={({ focused, pressed }) => [
           styles.stepBtn,
+          focused && focusFill,
           focused && focusRing,
           pressed && styles.pressed,
         ]}
@@ -228,6 +237,7 @@ export function Stepper({
         onPress={() => onChange(value + 1)}
         style={({ focused, pressed }) => [
           styles.stepBtn,
+          focused && focusFill,
           focused && focusRing,
           pressed && styles.pressed,
         ]}
@@ -254,8 +264,12 @@ export function AppModal({
   scrollbar?: boolean;
 }) {
   const { height } = useWindowDimensions();
+  // Иначе элементы живут в скрытой Modal и Android TV не назначает им
+  // hasTVPreferredFocus при следующем открытии.
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable focusable={false} style={styles.backdrop} onPress={onClose}>
         <Pressable focusable={false} style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.grabber} />
