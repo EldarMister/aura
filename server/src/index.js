@@ -1,11 +1,19 @@
 import 'dotenv/config';
 
+import { timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { Pool } from 'pg';
 import { Server } from 'socket.io';
 
+import {
+  getRelayCapabilities,
+  getRelayState,
+  setRelayState,
+} from './relayService.js';
+
 const port = Number(process.env.PORT || 3000);
 const databaseUrl = process.env.DATABASE_URL?.trim();
+const relayApiToken = process.env.RELAY_API_TOKEN?.trim();
 
 const memoryState = new Map();
 const pool = databaseUrl
@@ -50,10 +58,111 @@ async function saveState(room, snapshot) {
   return nextSnapshot;
 }
 
-const httpServer = createServer((req, res) => {
-  if (req.url === '/health') {
-    res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, storage: pool ? 'postgres' : 'memory' }));
+function sendJson(res, status, payload) {
+  res.writeHead(status, {
+    'access-control-allow-headers': 'authorization, content-type',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
+    'access-control-allow-origin': '*',
+    'content-type': 'application/json; charset=utf-8',
+  });
+  res.end(JSON.stringify(payload));
+}
+
+function isAuthorized(req) {
+  if (!relayApiToken) return false;
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') || '';
+  const expected = Buffer.from(relayApiToken);
+  const received = Buffer.from(token);
+  return expected.length === received.length && timingSafeEqual(expected, received);
+}
+
+async function readJson(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 16_384) throw new Error('Слишком большой запрос');
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+}
+
+async function handleRelayApi(req, res, url) {
+  if (!url.pathname.startsWith('/api/relay/')) return false;
+
+  if (req.method === 'OPTIONS') {
+    sendJson(res, 204, {});
+    return true;
+  }
+  if (!isAuthorized(req)) {
+    sendJson(res, 401, { ok: false, error: 'Нет доступа к управлению реле' });
+    return true;
+  }
+
+  try {
+    if (req.method === 'GET' && url.pathname === '/api/relay/status') {
+      const tableId = url.searchParams.get('tableId') || '';
+      const transport = url.searchParams.get('transport') || 'auto';
+      if (!['auto', 'local', 'cloud'].includes(transport)) {
+        sendJson(res, 400, { ok: false, error: 'Неизвестный канал управления реле' });
+        return true;
+      }
+      const result = await getRelayState(tableId, transport);
+      sendJson(res, 200, { ok: true, tableId, ...result });
+      return true;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/relay/status') {
+      const { tableId, transport = 'auto', device } = await readJson(req);
+      if (typeof tableId !== 'string') {
+        sendJson(res, 400, { ok: false, error: 'Нужно поле tableId' });
+        return true;
+      }
+      if (!['auto', 'local', 'cloud'].includes(transport)) {
+        sendJson(res, 400, { ok: false, error: 'Неизвестный канал управления реле' });
+        return true;
+      }
+      const result = await getRelayState(tableId, transport, device);
+      sendJson(res, 200, { ok: true, tableId, ...result });
+      return true;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/api/relay/control') {
+      const { tableId, on, transport = 'auto', device } = await readJson(req);
+      if (typeof tableId !== 'string' || typeof on !== 'boolean') {
+        sendJson(res, 400, { ok: false, error: 'Нужны tableId и логическое поле on' });
+        return true;
+      }
+      if (!['auto', 'local', 'cloud'].includes(transport)) {
+        sendJson(res, 400, { ok: false, error: 'Неизвестный канал управления реле' });
+        return true;
+      }
+      const result = await setRelayState(tableId, on, transport, device);
+      sendJson(res, 200, { ok: true, tableId, ...result });
+      return true;
+    }
+
+    sendJson(res, 404, { ok: false, error: 'Команда реле не найдена' });
+  } catch (error) {
+    console.error('Relay API:', error);
+    sendJson(res, 503, {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Ошибка управления реле',
+    });
+  }
+  return true;
+}
+
+const httpServer = createServer(async (req, res) => {
+  const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  if (await handleRelayApi(req, res, url)) return;
+
+  if (url.pathname === '/health') {
+    sendJson(res, 200, {
+      ok: true,
+      storage: pool ? 'postgres' : 'memory',
+      relay: getRelayCapabilities(),
+    });
     return;
   }
 
