@@ -17,6 +17,7 @@ import {
   SquareButton,
 } from '@/components/ui';
 import { useNow } from '@/hooks/useNow';
+import { type RelayUiState, useTableRelay } from '@/hooks/useTableRelay';
 import { colors, focusFill, focusRing, sp } from '@/theme';
 import { GameRecord } from '@/types';
 import { useSelectedTable, useStore } from '@/store/useStore';
@@ -42,6 +43,24 @@ export function TablesScreen() {
 
   const session = table.session;
   const active = table.status === 'active' && !!session;
+  const relay = useTableRelay(table.id);
+
+  const controlLight = async (on: boolean, source: 'table' | 'manual' = 'table') => {
+    try {
+      await relay.setLight(on);
+    } catch (error) {
+      const title =
+        source === 'manual'
+          ? 'Не удалось управлять светом'
+          : on
+            ? 'Стол открыт, но свет не включился'
+            : 'Стол закрыт, но свет не выключился';
+      Alert.alert(
+        title,
+        error instanceof Error ? error.message : 'Не удалось связаться с реле.',
+      );
+    }
+  };
 
   const onToggle = () => {
     if (active) {
@@ -52,13 +71,17 @@ export function TablesScreen() {
           style: 'destructive',
           onPress: () => {
             const record = closeTable(table.id);
-            if (record) setClosedGame(record);
+            if (record) {
+              setClosedGame(record);
+              void controlLight(false);
+            }
           },
         },
       ]);
     } else {
       if (tariffs.length === 1) {
         openGame(table.id, tariffs[0].id);
+        void controlLight(true);
         return;
       }
       setModal('open');
@@ -138,7 +161,38 @@ export function TablesScreen() {
             onPress={() => setModal('edit')}
           />
         </View>
+        {relay.supported ? (
+          <View style={styles.gridRow}>
+            <SquareButton
+              icon={relay.state === 'on' ? 'sun' : 'power'}
+              label={
+                relay.state === 'loading'
+                  ? 'Управление светом…'
+                  : relay.state === 'on'
+                    ? 'Выключить свет'
+                    : 'Включить свет'
+              }
+              disabled={relay.state === 'loading'}
+              onPress={() => void controlLight(relay.state !== 'on', 'manual')}
+            />
+            <View style={styles.gridSpacer} />
+          </View>
+        ) : null}
       </View>
+
+      {relay.supported ? (
+        <View style={styles.relayStatus}>
+          <View
+            style={[
+              styles.relayDot,
+              { backgroundColor: relayStatusColor(relay.state) },
+            ]}
+          />
+          <Text style={styles.relayStatusText}>
+            {relayStatusLabel(relay.state, relay.transport)}
+          </Text>
+        </View>
+      ) : null}
 
       {/* Модалки */}
       <OpenTableModal
@@ -146,6 +200,7 @@ export function TablesScreen() {
         tableId={table.id}
         tableName={table.name}
         onClose={() => setModal(null)}
+        onOpened={() => void controlLight(true)}
       />
       <AddDrinksModal
         visible={modal === 'drinks'}
@@ -159,6 +214,7 @@ export function TablesScreen() {
         onCanceled={(record) => {
           setModal(null);
           setClosedGame(record);
+          void controlLight(false);
         }}
       />
       <GameDetailModal game={closedGame} onClose={() => setClosedGame(null)} />
@@ -245,6 +301,26 @@ function DetailRow({
 
 const Divider = () => <View style={styles.divider} />;
 
+function relayStatusColor(state: RelayUiState) {
+  if (state === 'on') return colors.green;
+  if (state === 'loading' || state === 'unknown') return colors.amber;
+  if (state === 'error') return colors.danger;
+  return colors.textMuted;
+}
+
+function relayStatusLabel(
+  state: RelayUiState,
+  transport: 'cloud' | null,
+) {
+  if (state === 'loading') return 'Отправляем команду реле…';
+  if (state === 'unknown') return 'Проверяем свет…';
+  if (state === 'error') return 'Реле недоступно — нажмите кнопку, чтобы повторить';
+
+  const status = state === 'on' ? 'Свет включён' : 'Свет выключен';
+  const channel = transport === 'cloud' ? 'через облако' : '';
+  return channel ? `${status} · ${channel}` : status;
+}
+
 const styles = StyleSheet.create({
   footerControls: { gap: sp(3) },
   tvBtn: {
@@ -278,4 +354,14 @@ const styles = StyleSheet.create({
 
   grid: { marginTop: sp(4), gap: sp(4) },
   gridRow: { flexDirection: 'row', gap: sp(4) },
+  gridSpacer: { flex: 1 },
+  relayStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp(2),
+    marginTop: sp(3),
+    paddingHorizontal: sp(1),
+  },
+  relayDot: { width: 9, height: 9, borderRadius: 5 },
+  relayStatusText: { flex: 1, fontSize: 13, color: colors.textMuted },
 });

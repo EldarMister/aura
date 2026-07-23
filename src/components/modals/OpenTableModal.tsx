@@ -14,11 +14,13 @@ export function OpenTableModal({
   tableId,
   tableName,
   onClose,
+  onOpened,
 }: {
   visible: boolean;
   tableId: string;
   tableName: string;
   onClose: () => void;
+  onOpened: () => void;
 }) {
   const tariffs = useStore((s) => s.tariffs);
   const openGame = useStore((s) => s.openGame);
@@ -32,6 +34,7 @@ export function OpenTableModal({
     if (!tariffId) return;
     openGame(tableId, tariffId);
     onClose();
+    onOpened();
   };
 
   return (

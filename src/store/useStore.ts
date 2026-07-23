@@ -7,11 +7,15 @@ import {
   ConnStatus,
   Drink,
   GameRecord,
+  RelayConfig,
+  RelayConfigs,
+  RelayTableId,
   ScreenName,
   SyncSnapshot,
   Table,
   Tariff,
 } from '@/types';
+import { DEFAULT_RELAY_CONFIG, DEFAULT_RELAY_CONFIGS } from '@/config/relayConfig';
 import { drinksTotal, elapsedSeconds, sessionTotal, timeCost } from '@/utils/session';
 import { uid } from '@/utils/format';
 
@@ -61,6 +65,10 @@ interface StoreState {
   setConnStatus: (status: ConnStatus) => void;
   applyRemoteSnapshot: (snap: SyncSnapshot) => void;
 
+  /* реле света для каждого стола */
+  relays: RelayConfigs;
+  setRelay: (tableId: RelayTableId, config: RelayConfig) => void;
+
   /* nav */
   go: (screen: ScreenName) => void;
   selectTable: (tableId: string) => void;
@@ -79,6 +87,24 @@ interface StoreState {
   removeDrink: (id: string) => void;
   upsertTariff: (tariff: { id?: string; name: string; pricePerHour: number }) => void;
   removeTariff: (id: string) => void;
+}
+
+type PersistedStoreState = Partial<StoreState> & { relay?: Partial<RelayConfig> };
+
+function migrateRelayConfig(config?: Partial<RelayConfig>): RelayConfig {
+  return {
+    ...DEFAULT_RELAY_CONFIG,
+    ...config,
+    mode: config?.mode === 'cloud' ? 'cloud' : 'off',
+    region: 'eu',
+  };
+}
+
+function migrateRelayConfigs(state: PersistedStoreState) {
+  return {
+    'table-1': migrateRelayConfig(state.relays?.['table-1'] ?? state.relay),
+    'table-2': migrateRelayConfig(state.relays?.['table-2']),
+  };
 }
 
 const mapTable = (
@@ -149,6 +175,10 @@ export const useStore = create<StoreState>()(
           history: snap.history ?? state.history,
           gameCounter: snap.gameCounter ?? state.gameCounter,
         })),
+
+      relays: DEFAULT_RELAY_CONFIGS,
+      setRelay: (tableId, relay) =>
+        set((state) => ({ relays: { ...state.relays, [tableId]: relay } })),
 
       go: (screen) => set({ screen }),
       selectTable: (selectedTableId) => set({ selectedTableId }),
@@ -319,13 +349,30 @@ export const useStore = create<StoreState>()(
     {
       name: 'billiard-store-v1',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 3,
       // В v1 поменялась схема истории (номера игр, *Amount). Старые записи
       // несовместимы — сбрасываем историю, справочники при этом сохраняем.
       migrate: (persisted, version) => {
-        const state = persisted as Partial<StoreState> | undefined;
+        const state = persisted as PersistedStoreState | undefined;
         if (state && version < 1) {
-          return { ...state, history: [], gameCounter: 0 } as StoreState;
+          return {
+            ...state,
+            history: [],
+            gameCounter: 0,
+            relays: migrateRelayConfigs(state),
+          } as StoreState;
+        }
+        if (state && version < 2) {
+          return {
+            ...state,
+            relays: migrateRelayConfigs(state),
+          } as StoreState;
+        }
+        if (state && version < 3) {
+          return {
+            ...state,
+            relays: migrateRelayConfigs(state),
+          } as StoreState;
         }
         return state as StoreState;
       },
@@ -338,6 +385,7 @@ export const useStore = create<StoreState>()(
         history: s.history,
         gameCounter: s.gameCounter,
         connection: s.connection,
+        relays: s.relays,
       }),
     },
   ),

@@ -183,11 +183,13 @@ export function PrimaryButton({
   onPress,
   variant = 'green',
   style,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'green' | 'danger' | 'ghost';
   style?: ViewStyle;
+  disabled?: boolean;
 }) {
   const bg =
     variant === 'green' ? colors.green : variant === 'danger' ? colors.danger : colors.white;
@@ -195,6 +197,7 @@ export function PrimaryButton({
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={({ focused, pressed }) => [
         styles.primaryBtn,
         { backgroundColor: bg },
@@ -202,7 +205,8 @@ export function PrimaryButton({
         focused && variant === 'ghost' && focusFill,
         focused && focusRing,
         style,
-        pressed && styles.pressed,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.primaryDisabled,
       ]}
     >
       <Text style={[styles.primaryBtnText, { color: fg }]}>{label}</Text>
@@ -390,6 +394,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryBtnText: { fontSize: 16, fontWeight: '700' },
+  primaryDisabled: { opacity: 0.55 },
 
   stepper: { flexDirection: 'row', alignItems: 'center', gap: sp(3) },
   stepBtn: {

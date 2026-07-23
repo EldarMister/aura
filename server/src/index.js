@@ -102,42 +102,29 @@ async function handleRelayApi(req, res, url) {
   try {
     if (req.method === 'GET' && url.pathname === '/api/relay/status') {
       const tableId = url.searchParams.get('tableId') || '';
-      const transport = url.searchParams.get('transport') || 'auto';
-      if (!['auto', 'local', 'cloud'].includes(transport)) {
-        sendJson(res, 400, { ok: false, error: 'Неизвестный канал управления реле' });
-        return true;
-      }
-      const result = await getRelayState(tableId, transport);
+      const result = await getRelayState(tableId);
       sendJson(res, 200, { ok: true, tableId, ...result });
       return true;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/relay/status') {
-      const { tableId, transport = 'auto', device } = await readJson(req);
+      const { tableId, device } = await readJson(req);
       if (typeof tableId !== 'string') {
         sendJson(res, 400, { ok: false, error: 'Нужно поле tableId' });
         return true;
       }
-      if (!['auto', 'local', 'cloud'].includes(transport)) {
-        sendJson(res, 400, { ok: false, error: 'Неизвестный канал управления реле' });
-        return true;
-      }
-      const result = await getRelayState(tableId, transport, device);
+      const result = await getRelayState(tableId, device);
       sendJson(res, 200, { ok: true, tableId, ...result });
       return true;
     }
 
     if (req.method === 'POST' && url.pathname === '/api/relay/control') {
-      const { tableId, on, transport = 'auto', device } = await readJson(req);
+      const { tableId, on, device } = await readJson(req);
       if (typeof tableId !== 'string' || typeof on !== 'boolean') {
         sendJson(res, 400, { ok: false, error: 'Нужны tableId и логическое поле on' });
         return true;
       }
-      if (!['auto', 'local', 'cloud'].includes(transport)) {
-        sendJson(res, 400, { ok: false, error: 'Неизвестный канал управления реле' });
-        return true;
-      }
-      const result = await setRelayState(tableId, on, transport, device);
+      const result = await setRelayState(tableId, on, device);
       sendJson(res, 200, { ok: true, tableId, ...result });
       return true;
     }

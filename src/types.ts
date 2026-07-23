@@ -83,6 +83,28 @@ export interface ConnectionConfig {
   lanHost: string; // IP телевизора в Wi-Fi (для прямого LAN, вводится на телефоне)
 }
 
+/* ------------------------------- реле Tuya ------------------------------- */
+
+export type RelayMode = 'off' | 'cloud';
+export type RelayTableId = 'table-1' | 'table-2';
+export type TuyaRegion =
+  | 'eu'
+  | 'eu-west'
+  | 'us'
+  | 'us-east'
+  | 'cn'
+  | 'in'
+  | 'sg';
+export interface RelayConfig {
+  mode: RelayMode;
+  deviceId: string;
+  region: TuyaRegion;
+  dpCode: string;
+  cloudUrl: string;
+}
+
+export type RelayConfigs = Record<RelayTableId, RelayConfig>;
+
 /** Снимок состояния, который пульт шлёт на табло. */
 export interface SyncSnapshot {
   tables: Table[];
